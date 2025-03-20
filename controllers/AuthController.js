@@ -27,19 +27,23 @@ const generateRefreshToken = async (payload) => {
 
 // Kelas AuthController untuk mengelola autentikasi pengguna
 class AuthController {
-  
+
   // Konfigurasi multer untuk upload gambar
   constructor() {
     // Konfigurasi multer untuk upload gambar
     this.storage = multer.diskStorage({
+      // Menentukan direktori penyimpanan file yang diupload
       destination: (req, file, cb) => {
         const uploadPath = "uploads/profile_pictures";
+        
         // Cek apakah folder sudah ada, jika belum buat otomatis
         if (!fs.existsSync(uploadPath)) {
           fs.mkdirSync(uploadPath, { recursive: true });
         }
         cb(null, uploadPath);
       },
+
+      // Menentukan nama file yang diupload
       filename: (req, file, cb) => {
         cb(null, `profile-${req.params.id}${path.extname(file.originalname)}`);
       },
@@ -48,8 +52,12 @@ class AuthController {
     this.upload = multer({ storage: this.storage });
   }
 
-
   // Metode register untuk mendaftarkan pengguna baru
+  /**
+   * Mendaftarkan pengguna baru dengan validasi input dan penyimpanan data.
+   * @param {Object} req - Request object.
+   * @param {Object} res - Response object.
+   */
   async register(req, res) {
     try {
       // Validasi input
@@ -91,6 +99,11 @@ class AuthController {
   }
 
   // Metode login untuk autentikasi pengguna
+  /**
+   * Mengautentikasi pengguna dan menghasilkan access token serta refresh token.
+   * @param {Object} req - Request object.
+   * @param {Object} res - Response object.
+   */
   async login(req, res) {
     try {
       // Validasi input
@@ -132,6 +145,12 @@ class AuthController {
     }
   }
 
+  // Metode untuk memperbarui profil pengguna
+  /**
+   * Memperbarui informasi pengguna berdasarkan ID.
+   * @param {Object} req - Request object.
+   * @param {Object} res - Response object.
+   */
   async updateProfile(req, res) {
     try {
       // Validasi input
@@ -179,6 +198,11 @@ class AuthController {
   }
 
   // Metode untuk memperbarui access token dengan refresh token
+  /**
+   * Menghasilkan access token baru menggunakan refresh token yang valid.
+   * @param {Object} req - Request object.
+   * @param {Object} res - Response object.
+   */
   async refreshToken(req, res) {
     try {
       // Validasi apakah refresh token disediakan
@@ -227,6 +251,11 @@ class AuthController {
   }
 
   // Controller update foto profil
+  /**
+   * Memperbarui foto profil pengguna.
+   * @param {Object} req - Request object.
+   * @param {Object} res - Response object.
+   */
   async updateProfilePicture(req, res) {
     try {
       if (!req.file) throw { code: 400, message: "NO_FILE_UPLOADED" };
@@ -234,6 +263,7 @@ class AuthController {
       const user = await User.findOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
       if (!user) throw { code: 404, message: "USER_NOT_FOUND" };
       
+      // Hapus foto profil lama jika ada
       if (user.profile_pic) {
         const oldFilePath = path.join("uploads", user.profile_pic);
         if (fs.existsSync(oldFilePath)) {
