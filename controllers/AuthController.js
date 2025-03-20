@@ -188,7 +188,13 @@ class AuthController {
       return res.status(200).json({
         status: true,
         message: "USER_UPDATED_SUCCESS",
-        data: user,
+        data: {
+          user_id: user._id,
+          fullname: user.fullname,
+          email: user.email,
+          role: user.role,
+          profile_pic: user.profile_pic,
+        },
       });
     } catch (error) {
       return res
