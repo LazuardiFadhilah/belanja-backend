@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import express from "express";
 import apiRouter from "./routes/api.js";
-import connection from "./connection.js";
+import connection from "./config/connection.js";
 
 const env = dotenv.config().parsed;
 
