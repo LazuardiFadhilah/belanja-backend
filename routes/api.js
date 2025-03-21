@@ -26,12 +26,12 @@ router.post(
 );
 
 // Route untuk mendapatkan produk
-router.get("/", jwtAuth, productController.getProduct);
+router.get("/products/:id?", jwtAuth, productController.getProduct);
 
 // Route untuk menambahkan produk baru
-router.post("/", jwtAuth, upload.array("images", 5), productController.postProduct);
+router.post("/product", jwtAuth, upload.array("images", 5), productController.postProduct);
 
 // Route untuk memperbarui produk yang ada
-router.put("/:id", jwtAuth, upload.array("images", 5), productController.putProduct);
-
+router.put("/product/:id", jwtAuth, upload.array("images", 5), productController.putProduct);
+router.delete("/product/:id", jwtAuth, productController.deleteProduct);
 export default router;

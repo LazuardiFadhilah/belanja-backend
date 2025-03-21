@@ -9,15 +9,13 @@ const Schema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    categoryId:{
+    categoryId:[{
         type: mongoose.Types.ObjectId,
         ref:"Category",
-        required:true
-    },
+    }],
     brandId:{
         type: mongoose.Types.ObjectId,
         ref:"Brand",
-        required:true
     },
     price:{
         type:Number,
