@@ -1,9 +1,9 @@
 import express from "express";
 import AuthController from "../controllers/AuthController.js";
-import productController from "../controllers/productController.js";
+import productController, { uploadProduct } from "../controllers/productController.js";
 import categoryController from "../controllers/categoryController.js";
+import brandController, { uploadBrand } from "../controllers/brandController.js";
 import jwtAuth from "../middleware/jwtAuth.js";
-import upload from "../config/mutlerConfig.js";
 
 const router = express.Router();
 
@@ -25,9 +25,9 @@ router.put("/user/:id", jwtAuth, AuthController.updateProfile);
 
 // Route untuk mengunggah foto profil pengguna
 router.post(
-    "/user/:id/profile-picture",
-    AuthController.upload.single("profilePicture"),
-    AuthController.updateProfilePicture
+  "/user/:id/profile-picture",
+  AuthController.upload.single("profilePicture"),
+  AuthController.updateProfilePicture
 );
 
 // =========================
@@ -38,10 +38,20 @@ router.post(
 router.get("/products/:id?", jwtAuth, productController.getProduct);
 
 // Route untuk menambahkan produk baru (memerlukan autentikasi dan bisa mengunggah hingga 5 gambar)
-router.post("/product", jwtAuth, upload.array("images", 5), productController.postProduct);
+router.post(
+  "/product",
+  jwtAuth,
+  uploadProduct.array("images", 5),
+  productController.postProduct
+);
 
 // Route untuk memperbarui produk (memerlukan autentikasi dan bisa mengunggah hingga 5 gambar)
-router.put("/product/:id", jwtAuth, upload.array("images", 5), productController.putProduct);
+router.put(
+  "/product/:id",
+  jwtAuth,
+  uploadProduct.array("images", 5),
+  productController.putProduct
+);
 
 // Route untuk menghapus produk (memerlukan autentikasi)
 router.delete("/product/:id", jwtAuth, productController.deleteProduct);
@@ -61,5 +71,31 @@ router.put("/category/:id", jwtAuth, categoryController.updateCategory);
 
 // Route untuk menghapus kategori (memerlukan autentikasi)
 router.delete("/category/:id", jwtAuth, categoryController.deleteCategory);
+
+// =========================
+//  BRAND ROUTES
+// =========================
+
+// Route untuk menambahkan brand baru (memerlukan autentikasi dan mengunggah gambar)
+router.post(
+  "/brand",
+  jwtAuth,
+  uploadBrand.single("image"),
+  brandController.postBrand
+);
+
+// Route untuk memperbarui brand (memerlukan autentikasi dan mengunggah gambar)
+router.put(
+  "/brand/:id",
+  jwtAuth,
+  uploadBrand.single("image"),
+  brandController.updateBrand
+);
+
+// Route untuk mendapatkan satu atau semua brand (memerlukan autentikasi)
+router.get("/brand/:id?", jwtAuth, brandController.getBrand);
+
+// Route untuk menghapus brand (memerlukan autentikasi)
+router.delete("/brand/:id", jwtAuth, brandController.deleteBrand);
 
 export default router;

@@ -2,11 +2,11 @@ import Product from "../models/Products.js";
 import Brand from "../models/Brand.js";
 import Category from "../models/Category.js";
 import path, { dirname } from "path";
-import { fileURLToPath } from "url";
 import fs from "fs";
+import configureMulter from "../config/multerConfig.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Gunakan konfigurasi multer khusus untuk produk
+const uploadProduct = configureMulter("uploads/productImages/");
 
 class ProductController {
   async getProduct(req, res) {
@@ -69,7 +69,7 @@ class ProductController {
         stocks,
       } = req.body;
       const images = req.files
-        ? req.files.map((file) => `/uploads/${file.filename}`)
+        ? req.files.map((file) => `/uploads/productImages/${file.filename}`)
         : [];
       const categories = categoryId
         ? categoryId.split(",").map((id) => id.trim())
@@ -119,8 +119,8 @@ class ProductController {
       // ✅ Hapus gambar dari folder & database
       if (imagesToRemove.length > 0) {
         imagesToRemove.forEach((image) => {
-          const filename = image.replace("/uploads/", ""); // Hapus /uploads/ dari path
-          const filePath = path.join(__dirname, `../uploads`, filename); // Buat path absolut
+          const filename = image.replace("/uploads/productImages/", ""); // Hapus path prefix
+          const filePath = path.join(process.cwd(), `uploads/productImages/`, filename);
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath); // Hapus dari folder
           } else {
@@ -136,14 +136,14 @@ class ProductController {
 
       // ✅ Tambahkan gambar baru dengan FIFO (maksimal 5 gambar)
       if (req.files && req.files.length > 0) {
-        const newImages = req.files.map((file) => `/uploads/${file.filename}`);
+        const newImages = req.files.map((file) => `/uploads/productImages/${file.filename}`);
         product.images = [...product.images, ...newImages];
 
         // Jika lebih dari 5 gambar, hapus gambar pertama (FIFO)
         while (product.images.length > 5) {
           const imageToDelete = product.images.shift();
-          const filename = imageToDelete.replace("/uploads/", "");
-          const filePath = path.join(__dirname, `../uploads`, filename);
+          const filename = imageToDelete.replace("/uploads/productImages/", "");
+          const filePath = path.join(process.cwd(), `uploads/productImages/`, filename);
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
           }
@@ -182,7 +182,8 @@ class ProductController {
       if (!product) throw { code: 404, message: "PRODUCT_NOT_FOUND" };
 
       product.images.forEach((image) => {
-        const filePath = path.join(__dirname, `../uploads/${image}`);
+        const filename = image.replace("/uploads/productImages/", "");
+        const filePath = path.join(process.cwd(), `uploads/productImages/`, filename);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
@@ -201,4 +202,5 @@ class ProductController {
   }
 }
 
+export { uploadProduct };
 export default new ProductController();
