@@ -3,6 +3,7 @@ import AuthController from "../controllers/AuthController.js";
 import productController, { uploadProduct } from "../controllers/productController.js";
 import categoryController from "../controllers/categoryController.js";
 import brandController, { uploadBrand } from "../controllers/brandController.js";
+import CartController from "../controllers/cartController.js";
 import jwtAuth from "../middleware/jwtAuth.js";
 
 const router = express.Router();
@@ -98,4 +99,13 @@ router.get("/brand/:id?", jwtAuth, brandController.getBrand);
 // Route untuk menghapus brand (memerlukan autentikasi)
 router.delete("/brand/:id", jwtAuth, brandController.deleteBrand);
 
+
+// =========================
+//  CART ROUTES
+// =========================
+// Route untuk membuat keranjang baru (memerlukan autentikasi)
+router.post("/cart/:userId", jwtAuth, CartController.postCart);
+router.get("/cart", jwtAuth, CartController.getCart);
+router.get("/cart/:id", jwtAuth, CartController.getCartById);
+router.get("/cart/user/:userId", jwtAuth, CartController.getCartByUserId);
 export default router;
