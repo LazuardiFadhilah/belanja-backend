@@ -1,34 +1,32 @@
+// Import dependencies dan controller
 import express from "express";
 import AuthController from "../controllers/AuthController.js";
-import productController, {
-  uploadProduct,
-} from "../controllers/productController.js";
+import productController, { uploadProduct } from "../controllers/productController.js";
 import categoryController from "../controllers/categoryController.js";
-import brandController, {
-  uploadBrand,
-} from "../controllers/brandController.js";
+import brandController, { uploadBrand } from "../controllers/brandController.js";
 import CartController from "../controllers/cartController.js";
+import CartItemController from "../controllers/cartItemController.js";
 import jwtAuth from "../middleware/jwtAuth.js";
 
 const router = express.Router();
 
 // =========================
-//  AUTHENTICATION ROUTES
+// AUTHENTICATION ROUTES
 // =========================
 
-// Route untuk registrasi pengguna
+// Registrasi pengguna
 router.post("/register", AuthController.register);
 
-// Route untuk login pengguna
+// Login pengguna
 router.post("/login", AuthController.login);
 
-// Route untuk refresh token (memerlukan autentikasi)
+// Refresh token (memerlukan autentikasi)
 router.post("/refresh-token", jwtAuth, AuthController.refreshToken);
 
-// Route untuk memperbarui profil pengguna (memerlukan autentikasi)
+// Perbarui profil pengguna (memerlukan autentikasi)
 router.put("/user/:id", jwtAuth, AuthController.updateProfile);
 
-// Route untuk mengunggah foto profil pengguna
+// Upload foto profil pengguna
 router.post(
   "/user/:id/profile-picture",
   AuthController.upload.single("profilePicture"),
@@ -36,13 +34,13 @@ router.post(
 );
 
 // =========================
-//  PRODUCT ROUTES
+// PRODUCT ROUTES
 // =========================
 
-// Route untuk mendapatkan satu atau semua produk (memerlukan autentikasi)
+// Dapatkan satu atau semua produk (memerlukan autentikasi)
 router.get("/products/:id?", jwtAuth, productController.getProduct);
 
-// Route untuk menambahkan produk baru (memerlukan autentikasi dan bisa mengunggah hingga 5 gambar)
+// Tambah produk baru (max 5 gambar, memerlukan autentikasi)
 router.post(
   "/product",
   jwtAuth,
@@ -50,7 +48,7 @@ router.post(
   productController.postProduct
 );
 
-// Route untuk memperbarui produk (memerlukan autentikasi dan bisa mengunggah hingga 5 gambar)
+// Perbarui produk (max 5 gambar, memerlukan autentikasi)
 router.put(
   "/product/:id",
   jwtAuth,
@@ -58,30 +56,30 @@ router.put(
   productController.putProduct
 );
 
-// Route untuk menghapus produk (memerlukan autentikasi)
+// Hapus produk (memerlukan autentikasi)
 router.delete("/product/:id", jwtAuth, productController.deleteProduct);
 
 // =========================
-//  CATEGORY ROUTES
+// CATEGORY ROUTES
 // =========================
 
-// Route untuk menambahkan kategori baru (memerlukan autentikasi)
+// Tambah kategori baru (memerlukan autentikasi)
 router.post("/category", jwtAuth, categoryController.postCategory);
 
-// Route untuk mendapatkan satu atau semua kategori (memerlukan autentikasi)
+// Dapatkan satu atau semua kategori (memerlukan autentikasi)
 router.get("/category/:id?", jwtAuth, categoryController.getCategory);
 
-// Route untuk memperbarui kategori (memerlukan autentikasi)
+// Perbarui kategori (memerlukan autentikasi)
 router.put("/category/:id", jwtAuth, categoryController.updateCategory);
 
-// Route untuk menghapus kategori (memerlukan autentikasi)
+// Hapus kategori (memerlukan autentikasi)
 router.delete("/category/:id", jwtAuth, categoryController.deleteCategory);
 
 // =========================
-//  BRAND ROUTES
+// BRAND ROUTES
 // =========================
 
-// Route untuk menambahkan brand baru (memerlukan autentikasi dan mengunggah gambar)
+// Tambah brand baru (dengan upload gambar, memerlukan autentikasi)
 router.post(
   "/brand",
   jwtAuth,
@@ -89,7 +87,7 @@ router.post(
   brandController.postBrand
 );
 
-// Route untuk memperbarui brand (memerlukan autentikasi dan mengunggah gambar)
+// Perbarui brand (dengan upload gambar, memerlukan autentikasi)
 router.put(
   "/brand/:id",
   jwtAuth,
@@ -97,20 +95,37 @@ router.put(
   brandController.updateBrand
 );
 
-// Route untuk mendapatkan satu atau semua brand (memerlukan autentikasi)
+// Dapatkan satu atau semua brand (memerlukan autentikasi)
 router.get("/brand/:id?", jwtAuth, brandController.getBrand);
 
-// Route untuk menghapus brand (memerlukan autentikasi)
+// Hapus brand (memerlukan autentikasi)
 router.delete("/brand/:id", jwtAuth, brandController.deleteBrand);
 
 // =========================
-//  CART ROUTES
+// CART ROUTES
 // =========================
-// Route untuk membuat keranjang baru (memerlukan autentikasi)
+
+// Buat keranjang baru untuk user tertentu (memerlukan autentikasi)
 router.post("/cart/:userId", jwtAuth, CartController.postCart);
+
+// Dapatkan semua cart
 router.get("/cart", jwtAuth, CartController.getCart);
+
+// Dapatkan cart berdasarkan ID
 router.get("/cart/:id", jwtAuth, CartController.getCartById);
+
+// Dapatkan cart berdasarkan user ID
 router.get("/cart/user/:userId", jwtAuth, CartController.getCartByUserId);
+
+// Perbarui cart
 router.put("/cart/:id", jwtAuth, CartController.putCart);
+
+// Hapus cart
 router.delete("/cart/:id", jwtAuth, CartController.deleteCart);
+
+
+// =========================
+// CART ITEMS ROUTES
+// =========================
+router.post("/cart/:CartId/cart-item", jwtAuth, CartItemController.createCartItem);
 export default router;

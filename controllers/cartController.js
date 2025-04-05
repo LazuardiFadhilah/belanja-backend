@@ -1,61 +1,48 @@
 import Cart from "../models/Cart.js";
 import User from "../models/User.js";
+import CartItem from "../models/CartItem.js";
 
 class CartController {
+  // 📦 Membuat keranjang baru untuk user tertentu
   async postCart(req, res) {
     try {
-      // Check if userId is provided in request parameters
-      if (!req.params.userId) {
-        return res.status(400).json({
-          status: false,
-          message: "USER_ID_REQUIRED",
-        });
+      const { userId } = req.params;
+      if (!userId) {
+        return res.status(400).json({ status: false, message: "USER_ID_REQUIRED" });
       }
-      // Retrieve user from database using userId
-      const user = await User.findById(req.params.userId);
-      // Check if user exists
+
+      // 🔍 Cek apakah user tersedia
+      const user = await User.findById(userId);
       if (!user) {
-        return res.status(404).json({
-          status: false,
-          message: "USER_NOT_FOUND",
-        });
+        return res.status(404).json({ status: false, message: "USER_NOT_FOUND" });
       }
-      // Check for an existing active cart for the user
-      const cart = await Cart.findOne({
-        userId: req.params.userId,
-        status: "active",
-      });
-      // If active cart exists, return it
-      if (cart) {
+
+      // 🔁 Cek apakah user sudah punya keranjang aktif
+      const existingCart = await Cart.findOne({ userId, status: "active" });
+      if (existingCart) {
         return res.status(200).json({
           status: true,
           message: "ACTIVE_CART_ALREADY_EXISTS",
           data: {
             user: user.fullname,
             cart: {
-              id: cart._id,
-              total_price: cart.total_price,
-              shipping_address: cart.shipping_address,
-              status: cart.status,
+              id: existingCart._id,
+              total_price: existingCart.total_price,
+              shipping_address: existingCart.shipping_address,
+              status: existingCart.status,
             },
           },
         });
       }
-      // Create a new cart for the user
+
+      // ✅ Jika belum ada, buat keranjang baru
       const newCart = await Cart.create({
-        userId: req.params.userId,
+        userId,
         total_price: 0,
         shipping_address: "",
         status: "active",
       });
-      // Check if cart creation failed
-      if (!newCart) {
-        return res.status(500).json({
-          status: false,
-          message: "CART_CREATE_FAILED",
-        });
-      }
-      // Return successful cart creation response
+
       return res.status(200).json({
         status: true,
         message: "CART_CREATE_SUCCESS",
@@ -70,171 +57,186 @@ class CartController {
         },
       });
     } catch (error) {
-      return res
-        .status(error.code || 500)
-        .json({ status: false, message: error.message });
+      return res.status(error.code || 500).json({ status: false, message: error.message });
     }
   }
 
+  // 📥 Menampilkan semua keranjang yang ada di database
   async getCart(req, res) {
     try {
-      // Retrieve all carts from the database
-      const cart = await Cart.find();
-      // Check if any carts were found
-      if (!cart) {
-        return res.status(404).json({
-          status: false,
-          message: "CART_NOT_FOUND",
-        });
+      const carts = await Cart.find();
+      if (!carts || carts.length === 0) {
+        return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
       }
-      // Return list of carts with count
-      return res.status(200).json({
-        status: true,
-        message: "CART_FOUND",
-        count: cart.length,
-        data: cart.map((item) => ({
-          userId: item.userId,
-          cart: {
-            id: item._id,
-            total_price: item.total_price,
-            shipping_address: item.shipping_address,
-            status: item.status,
-          },
-        })),
-      });
-    } catch (error) {
-      return res
-        .status(error.code || 500)
-        .json({ status: false, message: error.message });
-    }
-  }
 
-  async getCartById(req, res) {
-    try {
-      // Check if cart id is provided in request parameters
-      if (!req.params.id) {
-        return res.status(400).json({
-          status: false,
-          message: "CART_ID_REQUIRED",
-        });
-      }
-      // Retrieve cart by id from the database
-      const cart = await Cart.findById(req.params.id);
-      // Check if cart exists
-      if (!cart) {
-        return res.status(404).json({
-          status: false,
-          message: "CART_NOT_FOUND",
-        });
-      }
-      // Retrieve user associated with the cart
-      const user = await User.findById(cart.userId);
-      // Check if user exists for the cart
-      if (!user) {
-        return res.status(404).json({
-          status: false,
-          message: "USER_NOT_FOUND",
-        });
-      }
-      // Return cart details along with user info
-      return res.status(200).json({
-        status: true,
-        message: "CART_FOUND",
-        data: {
-          user: user.fullname,
+      // 🔄 Loop semua cart, ambil user & item, hitung ulang total_price
+      const cartData = await Promise.all(carts.map(async (cart) => {
+        const user = await User.findById(cart.userId);
+        const cartItems = await CartItem.find({ cartId: cart._id });
+
+        // 💰 Hitung total harga
+        const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
+        if (cart.total_price !== updatedTotalPrice) {
+          cart.total_price = updatedTotalPrice;
+          await cart.save();
+        }
+
+        return {
+          user: user?.fullname || "Unknown",
+          userId: user._id,
           cart: {
             id: cart._id,
             total_price: cart.total_price,
             shipping_address: cart.shipping_address,
             status: cart.status,
           },
-        },
+          cartItems: cartItems.map((item) => ({
+            id: item._id,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            subtotal: item.subtotal,
+          })),
+        };
+      }));
+
+      return res.status(200).json({
+        status: true,
+        message: "CART_FOUND",
+        count: cartData.length,
+        data: cartData,
       });
     } catch (error) {
-      return res
-        .status(error.code || 500)
-        .json({ status: false, message: error.message });
+      return res.status(error.code || 500).json({ status: false, message: error.message });
     }
   }
 
-  async getCartByUserId(req, res) {
+  // 🔍 Menampilkan detail keranjang berdasarkan ID keranjang
+  async getCartById(req, res) {
     try {
-      // Check if userId is provided in request parameters
-      if (!req.params.userId) {
-        return res.status(400).json({
-          status: false,
-          message: "USER_ID_REQUIRED",
-        });
-      }
-      // Retrieve user by userId
-      const user = await User.findById(req.params.userId);
-      // Check if user exists
-      if (!user) {
-        return res.status(404).json({
-          status: false,
-          message: "USER_NOT_FOUND",
-        });
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ status: false, message: "CART_ID_REQUIRED" });
       }
 
-      // Retrieve carts for the given user
-      const cart = await Cart.find({ userId: req.params.userId });
-      // Check if any carts were found for the user
+      const cart = await Cart.findById(id);
       if (!cart) {
-        return res.status(404).json({
-          status: false,
-          message: "CART_NOT_FOUND",
-        });
+        return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
       }
-      // Return carts details along with user info and count
+
+      const user = await User.findById(cart.userId);
+      if (!user) {
+        return res.status(404).json({ status: false, message: "USER_NOT_FOUND" });
+      }
+
+      const cartItems = await CartItem.find({ cartId: id });
+      if (!cartItems || cartItems.length === 0) {
+        return res.status(404).json({ status: false, message: "CART_ITEM_NOT_FOUND" });
+      }
+
+      // 💰 Recalculate total
+      const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
+      cart.total_price = updatedTotalPrice;
+      await cart.save();
+
       return res.status(200).json({
         status: true,
         message: "CART_FOUND",
         data: {
           user: user.fullname,
-          count: cart.length,
-          cart: cart.map((item) => ({
+          userId: user._id,
+          cart: {
+            id: cart._id,
+            total_price: cart.total_price,
+            shipping_address: cart.shipping_address,
+            status: cart.status,
+          },
+          cartItems: cartItems.map((item) => ({
             id: item._id,
-            total_price: item.total_price,
-            shipping_address: item.shipping_address,
-            status: item.status,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            subtotal: item.subtotal,
           })),
         },
       });
     } catch (error) {
-      return res
-        .status(error.code || 500)
-        .json({ status: false, message: error.message });
+      return res.status(error.code || 500).json({ status: false, message: error.message });
     }
   }
 
+  // 🔍 Menampilkan semua keranjang milik user tertentu
+  async getCartByUserId(req, res) {
+    try {
+      const { userId } = req.params;
+      if (!userId) {
+        return res.status(400).json({ status: false, message: "USER_ID_REQUIRED" });
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ status: false, message: "USER_NOT_FOUND" });
+      }
+
+      const carts = await Cart.find({ userId });
+      if (!carts || carts.length === 0) {
+        return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
+      }
+
+      const cartData = await Promise.all(carts.map(async (cart) => {
+        const cartItems = await CartItem.find({ cartId: cart._id });
+
+        const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
+        if (cart.total_price !== updatedTotalPrice) {
+          cart.total_price = updatedTotalPrice;
+          await cart.save();
+        }
+
+        return {
+          id: cart._id,
+          total_price: cart.total_price,
+          shipping_address: cart.shipping_address,
+          status: cart.status,
+          cartItems: cartItems.map((item) => ({
+            id: item._id,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            subtotal: item.subtotal,
+          })),
+        };
+      }));
+
+      return res.status(200).json({
+        status: true,
+        message: "CART_FOUND",
+        data: {
+          user: user.fullname,
+          userId: user._id,
+          count: cartData.length,
+          carts: cartData,
+        },
+      });
+    } catch (error) {
+      return res.status(error.code || 500).json({ status: false, message: error.message });
+    }
+  }
+
+  // ✏️ Update cart (alamat, total, status) berdasarkan ID
   async putCart(req, res) {
     try {
-      // Check if cart id is provided in request parameters
-      if (!req.params.id) {
-        return res.status(400).json({
-          status: false,
-          message: "CART_ID_REQUIRED",
-        });
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ status: false, message: "CART_ID_REQUIRED" });
       }
-      // Retrieve cart by id from the database
-      const cart = await Cart.findById(req.params.id);
-      // Check if cart exists
+
+      const cart = await Cart.findById(id);
       if (!cart) {
-        return res.status(404).json({
-          status: false,
-          message: "CART_NOT_FOUND",
-        });
+        return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
       }
-      // Validate cart status provided in request body
-      if (req.body.status !== "checkout" && req.body.status !== "abandoned") {
-        return res.status(400).json({
-          status: false,
-          message: "CART_STATUS_INVALID",
-        });
-      }
-      // Update cart with new details
+
       const updatedCart = await Cart.findByIdAndUpdate(
-        req.params.id,
+        id,
         {
           total_price: req.body.total_price,
           shipping_address: req.body.shipping_address,
@@ -242,14 +244,7 @@ class CartController {
         },
         { new: true }
       );
-      // Check if cart update failed
-      if (!updatedCart) {
-        return res.status(500).json({
-          status: false,
-          message: "CART_UPDATE_FAILED",
-        });
-      }
-      // Return updated cart details
+
       return res.status(200).json({
         status: true,
         message: "CART_UPDATE_SUCCESS",
@@ -261,41 +256,28 @@ class CartController {
         },
       });
     } catch (error) {
-      return res
-        .status(error.code || 500)
-        .json({ status: false, message: error.message });
+      return res.status(error.code || 500).json({ status: false, message: error.message });
     }
   }
 
+  // 🗑 Menghapus cart berdasarkan ID
   async deleteCart(req, res) {
     try {
-      // Check if cart id is provided in request parameters
-      if (!req.params.id) {
-        return res.status(400).json({
-          status: false,
-          message: "CART_ID_REQUIRED",
-        });
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ status: false, message: "CART_ID_REQUIRED" });
       }
-      // Retrieve cart by id from the database
-      const cart = await Cart.findById(req.params.id);
-      // Check if cart exists
+
+      const cart = await Cart.findById(id);
       if (!cart) {
-        return res.status(404).json({
-          status: false,
-          message: "CART_NOT_FOUND",
-        });
+        return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
       }
-      // Delete the cart from the database
-      await Cart.findByIdAndDelete(req.params.id);
-      // Return successful deletion response
-      return res.status(200).json({
-        status: true,
-        message: "CART_DELETE_SUCCESS",
-      });
+
+      await Cart.findByIdAndDelete(id);
+
+      return res.status(200).json({ status: true, message: "CART_DELETE_SUCCESS" });
     } catch (error) {
-      return res
-        .status(error.code || 500)
-        .json({ status: false, message: error.message });
+      return res.status(error.code || 500).json({ status: false, message: error.message });
     }
   }
 }
