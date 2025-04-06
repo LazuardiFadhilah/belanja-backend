@@ -1,6 +1,7 @@
 import Cart from "../models/Cart.js";
 import User from "../models/User.js";
 import CartItem from "../models/CartItem.js";
+import Products from "../models/Products.js";
 
 class CartController {
   // 📦 Membuat keranjang baru untuk user tertentu
@@ -72,8 +73,13 @@ class CartController {
       // 🔄 Loop semua cart, ambil user & item, hitung ulang total_price
       const cartData = await Promise.all(carts.map(async (cart) => {
         const user = await User.findById(cart.userId);
-        const cartItems = await CartItem.find({ cartId: cart._id });
-
+        const cartItems = await CartItem.find({ cartId: cart._id }).populate({
+          path:"productId", 
+          select:"name brandId description stocks location images",
+        populate:{
+          path:"brandId",
+          select:"title image",
+        }});
         // 💰 Hitung total harga
         const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
         if (cart.total_price !== updatedTotalPrice) {
@@ -129,7 +135,13 @@ class CartController {
         return res.status(404).json({ status: false, message: "USER_NOT_FOUND" });
       }
 
-      const cartItems = await CartItem.find({ cartId: id });
+      const cartItems = await CartItem.find({ cartId: id }).populate({
+        path:"productId", 
+        select:"name brandId description stocks location images",
+      populate:{
+        path:"brandId",
+        select:"title image",
+      }});
       if (!cartItems || cartItems.length === 0) {
         return res.status(404).json({ status: false, message: "CART_ITEM_NOT_FOUND" });
       }
@@ -184,7 +196,13 @@ class CartController {
       }
 
       const cartData = await Promise.all(carts.map(async (cart) => {
-        const cartItems = await CartItem.find({ cartId: cart._id });
+        const cartItems = await CartItem.find({ cartId: cart._id }).populate({
+          path:"productId", 
+          select:"name brandId description stocks location images",
+        populate:{
+          path:"brandId",
+          select:"title image",
+        }});
 
         const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
         if (cart.total_price !== updatedTotalPrice) {

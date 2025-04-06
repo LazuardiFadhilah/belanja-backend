@@ -25,7 +25,25 @@ class ProductController {
         return res.json({
           status: true,
           message: "GET_PRODUCT_SUCCESS",
-          data: product,
+          data: {
+            id: product._id,
+            name: product.name,
+            description: product.description,
+            category: {
+              id: product.categoryId._id,
+              title: product.categoryId.title,
+            },
+            price: product.price,
+            location: product.location,
+            stocks: product.stocks,
+            brand: {
+              id: product.brandId._id,
+              title: product.brandId.title,
+              image: product.brandId.image,
+            },
+            images: product.images,
+          },
+          
         });
       }
 
@@ -49,7 +67,24 @@ class ProductController {
       res.json({
         status: true,
         message: "GET_PRODUCTS_SUCCESS",
-        data: products,
+        data: products.map((product) => ({
+          id: product._id,
+            name: product.name,
+            description: product.description,
+            category: {
+              id: product.categoryId._id,
+              title: product.categoryId.title,
+            },
+            price: product.price,
+            location: product.location,
+            stocks: product.stocks,
+            brand: {
+              id: product.brandId._id,
+              title: product.brandId.title,
+              image: product.brandId.image,
+            },
+            images: product.images,
+        })),  
       });
     } catch (error) {
       return res
