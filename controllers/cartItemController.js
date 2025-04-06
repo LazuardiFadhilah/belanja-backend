@@ -53,7 +53,14 @@ class CartItemController {
               (duplicateItem.quantity + 1) * product.price,
           },
           { new: true }
-        );
+        ).populate({
+          path: "productId",
+          select: "name description categoryId brandId price location stocks images",
+          populate: {
+            path: "categoryId brandId",
+            select: "title image",
+          },
+        });
 
         res.status(200).json({
           status: true,
@@ -62,7 +69,7 @@ class CartItemController {
             cartId: cart._id,
             cartItemId: cartItem._id,
             productId: cartItem.productId,
-            product_name: product.name,
+            
             quantity: cartItem.quantity,
             price: cartItem.price,
             subtotal: cartItem.subtotal,
@@ -75,14 +82,11 @@ class CartItemController {
           quantity: req.body.quantity || 1,
           price: product.price,
           subtotal: req.body.quantity * product.price || product.price,
+        }).populate({
+          path: "productId",
+          select: "name descprition stocks",
         });
-        const cartUpdate = await Cart.findByIdAndUpdate(
-          req.params.CartId,
-          {
-            total_price: cart.total_price + cartItem.subtotal,
-          },
-          { new: true }
-        );
+    
         if (!cartUpdate) {
           return res.status(404).json({
             status: false,
@@ -96,7 +100,6 @@ class CartItemController {
             cartId: cart._id,
             cartItemId: cartItem._id,
             productId: cartItem.productId,
-            product_name: product.name,
             quantity: cartItem.quantity,
             price: cartItem.price,
             subtotal: cartItem.subtotal,

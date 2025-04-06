@@ -29,10 +29,7 @@ class ProductController {
             id: product._id,
             name: product.name,
             description: product.description,
-            category: {
-              id: product.categoryId._id,
-              title: product.categoryId.title,
-            },
+           category: product.categoryId, 
             price: product.price,
             location: product.location,
             stocks: product.stocks,
@@ -71,10 +68,7 @@ class ProductController {
           id: product._id,
             name: product.name,
             description: product.description,
-            category: {
-              id: product.categoryId._id,
-              title: product.categoryId.title,
-            },
+            category: product.categoryId, 
             price: product.price,
             location: product.location,
             stocks: product.stocks,
