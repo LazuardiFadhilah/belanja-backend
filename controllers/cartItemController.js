@@ -1,6 +1,8 @@
 import CartItem from "../models/CartItem.js";
 import Cart from "../models/Cart.js";
 import Product from "../models/Products.js";
+import User from "../models/User.js";
+import emailExist from "../libraries/emailExist.js";
 
 class CartItemController {
   async createCartItem(req, res) {
@@ -55,7 +57,8 @@ class CartItemController {
           { new: true }
         ).populate({
           path: "productId",
-          select: "name description categoryId brandId price location stocks images",
+          select:
+            "name description categoryId brandId price location stocks images",
           populate: {
             path: "categoryId brandId",
             select: "title image",
@@ -69,7 +72,7 @@ class CartItemController {
             cartId: cart._id,
             cartItemId: cartItem._id,
             productId: cartItem.productId,
-            
+
             quantity: cartItem.quantity,
             price: cartItem.price,
             subtotal: cartItem.subtotal,
@@ -82,11 +85,8 @@ class CartItemController {
           quantity: req.body.quantity || 1,
           price: product.price,
           subtotal: req.body.quantity * product.price || product.price,
-        }).populate({
-          path: "productId",
-          select: "name descprition stocks",
         });
-    
+
         if (!cartUpdate) {
           return res.status(404).json({
             status: false,
@@ -106,6 +106,78 @@ class CartItemController {
           },
         });
       }
+    } catch (error) {
+      return res
+        .status(error.code || 500)
+        .json({ status: false, message: error.message });
+    }
+  }
+
+  async getCartItemByCartId(req, res) {
+    try {
+      if (!req.params.cartId) {
+        return res.status(400).json({
+          status: false,
+          message: "CART_ID_REQUIRED",
+        });
+      }
+
+      const cart = await Cart.findById(req.params.cartId);
+      if (!cart) {
+        return res.status(404).json({
+          status: false,
+          message: "CART_NOT_FOUND",
+        });
+      }
+
+      const user = await User.findById(cart.userId);
+      if (!user) {
+        return res.status(404).json({
+          status: false,
+          message: "USER_NOT_FOUND",
+        });
+      }
+
+      const cartItem = await CartItem.find({
+        cartId: req.params.cartId,
+      }).populate({
+        path: "productId",
+        select:"name price stocks",
+      });
+      if (!cartItem) {
+        return res.status(404).json({
+          status: false,
+          message: "CART_ITEM_NOT_FOUND",
+        });
+      }
+
+      const updatedTotalPrice = cartItem.reduce((acc, item) => acc + item.subtotal, 0);
+      cart.total_price = updatedTotalPrice;
+      await cart.save();
+      
+        return res.status(200).json({
+          status: true,
+          message: "CART_ITEM_FOUND",
+          data: {
+            cartId: cart._id,
+            total_price: cart.total_price,
+            shipping_address: cart.shipping_address,
+            status: cart.status,
+            user:{
+              fullname: user.fullname,
+              email: user.email,
+            },
+            cart_Items: cartItem.map((item) => ({
+              product_name: item.productId.name,
+              product_price: item.productId.price,
+              product_stocks: item.productId.stocks,
+              quantity: item.quantity,
+              subtotal: item.subtotal,
+            })),
+          },
+        });
+
+     
     } catch (error) {
       return res
         .status(error.code || 500)

@@ -128,4 +128,5 @@ router.delete("/cart/:id", jwtAuth, CartController.deleteCart);
 // CART ITEMS ROUTES
 // =========================
 router.post("/cart/:CartId/cart-item", jwtAuth, CartItemController.createCartItem);
+router.get("/cart/:cartId/cart-item", jwtAuth, CartItemController.getCartItemByCartId);
 export default router;
