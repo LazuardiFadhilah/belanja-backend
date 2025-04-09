@@ -63,182 +63,199 @@ class CartController {
   }
 
   // 📥 Menampilkan semua keranjang yang ada di database
-  async getCart(req, res) {
-    try {
-      const carts = await Cart.find();
-      if (!carts || carts.length === 0) {
-        return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
+async getCart(req, res) {
+  try {
+    const carts = await Cart.find();
+    if (!carts || carts.length === 0) {
+      return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
+    }
+
+    const cartData = await Promise.all(carts.map(async (cart) => {
+      const user = await User.findById(cart.userId);
+      if (!user) return null;
+
+      const cartItems = await CartItem.find({ cartId: cart._id }).populate({
+        path: "productId",
+        select: "name price stocks"
+      });
+
+      const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
+      if (cart.total_price !== updatedTotalPrice) {
+        cart.total_price = updatedTotalPrice;
+        await cart.save();
       }
 
-      // 🔄 Loop semua cart, ambil user & item, hitung ulang total_price
-      const cartData = await Promise.all(carts.map(async (cart) => {
-        const user = await User.findById(cart.userId);
-        const cartItems = await CartItem.find({ cartId: cart._id }).populate({
-          path:"productId", 
-          select:"name brandId description stocks location images",
-        populate:{
-          path:"brandId",
-          select:"title image",
-        }});
-        // 💰 Hitung total harga
-        const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
-        if (cart.total_price !== updatedTotalPrice) {
-          cart.total_price = updatedTotalPrice;
-          await cart.save();
-        }
+      return {
+        cartId: cart._id,
+        total_price: cart.total_price,
+        shipping_address: cart.shipping_address,
+        status: cart.status,
+        user: {
+          fullname: user.fullname,
+          email: user.email,
+        },
+        cart_items: cartItems.map(item => ({
+          product_name: item.productId?.name,
+          product_price: item.productId?.price,
+          product_stocks: item.productId?.stocks,
+          quantity: item.quantity,
+          subtotal: item.subtotal
+        }))
+      };
+    }));
 
-        return {
-          user: user?.fullname || "Unknown",
-          userId: user._id,
-          cart: {
-            id: cart._id,
-            total_price: cart.total_price,
-            shipping_address: cart.shipping_address,
-            status: cart.status,
-          },
-          cartItems: cartItems.map((item) => ({
-            id: item._id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            subtotal: item.subtotal,
-          })),
-        };
-      }));
-
-      return res.status(200).json({
-        status: true,
-        message: "CART_FOUND",
-        count: cartData.length,
-        data: cartData,
-      });
-    } catch (error) {
-      return res.status(error.code || 500).json({ status: false, message: error.message });
+    const filteredData = cartData.filter(Boolean); // Hapus data user null
+    if (filteredData.length === 0) {
+      return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
     }
+
+    return res.status(200).json({
+      status: true,
+      message: "CART_FOUND",
+      count: filteredData.length,
+      data: filteredData,
+    });
+  } catch (error) {
+    return res.status(error.code || 500).json({ status: false, message: error.message });
   }
+}
 
   // 🔍 Menampilkan detail keranjang berdasarkan ID keranjang
   async getCartById(req, res) {
     try {
-      const { id } = req.params;
-      if (!id) {
-        return res.status(400).json({ status: false, message: "CART_ID_REQUIRED" });
-      }
-
-      const cart = await Cart.findById(id);
-      if (!cart) {
-        return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
-      }
-
-      const user = await User.findById(cart.userId);
-      if (!user) {
-        return res.status(404).json({ status: false, message: "USER_NOT_FOUND" });
-      }
-
-      const cartItems = await CartItem.find({ cartId: id }).populate({
-        path:"productId", 
-        select:"name brandId description stocks location images",
-      populate:{
-        path:"brandId",
-        select:"title image",
-      }});
-      if (!cartItems || cartItems.length === 0) {
-        return res.status(404).json({ status: false, message: "CART_ITEM_NOT_FOUND" });
-      }
-
-      // 💰 Recalculate total
-      const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
-      cart.total_price = updatedTotalPrice;
-      await cart.save();
-
-      return res.status(200).json({
-        status: true,
-        message: "CART_FOUND",
-        data: {
-          user: user.fullname,
-          userId: user._id,
-          cart: {
-            id: cart._id,
-            total_price: cart.total_price,
-            shipping_address: cart.shipping_address,
-            status: cart.status,
-          },
-          cartItems: cartItems.map((item) => ({
-            id: item._id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            subtotal: item.subtotal,
-          })),
-        },
-      });
-    } catch (error) {
-      return res.status(error.code || 500).json({ status: false, message: error.message });
-    }
-  }
+         if (!req.params.id) {
+           return res.status(400).json({
+             status: false,
+             message: "CART_ID_REQUIRED",
+           });
+         }
+   
+         const cart = await Cart.findById(req.params.id);
+         if (!cart) {
+           return res.status(404).json({
+             status: false,
+             message: "CART_NOT_FOUND",
+           });
+         }
+   
+         const user = await User.findById(cart.userId);
+         if (!user) {
+           return res.status(404).json({
+             status: false,
+             message: "USER_NOT_FOUND",
+           });
+         }
+   
+         const cartItem = await CartItem.find({
+           cartId: req.params.id,
+         }).populate({
+           path: "productId",
+           select:"name price stocks",
+         });
+         if (!cartItem) {
+           return res.status(404).json({
+             status: false,
+             message: "CART_ITEM_NOT_FOUND",
+           });
+         }
+   
+         const updatedTotalPrice = cartItem.reduce((acc, item) => acc + item.subtotal, 0);
+         cart.total_price = updatedTotalPrice;
+         await cart.save();
+         
+           return res.status(200).json({
+             status: true,
+             message: "CART_ITEM_FOUND",
+             data: {
+               cartId: cart._id,
+               total_price: cart.total_price,
+               shipping_address: cart.shipping_address,
+               status: cart.status,
+               user:{
+                 fullname: user.fullname,
+                 email: user.email,
+               },
+               cart_Items: cartItem.map((item) => ({
+                 product_name: item.productId.name,
+                 product_price: item.productId.price,
+                 product_stocks: item.productId.stocks,
+                 quantity: item.quantity,
+                 subtotal: item.subtotal,
+               })),
+             },
+           });
+   
+        
+       } catch (error) {
+         return res
+           .status(error.code || 500)
+           .json({ status: false, message: error.message });
+       }
+     }
+  
 
   // 🔍 Menampilkan semua keranjang milik user tertentu
-  async getCartByUserId(req, res) {
-    try {
-      const { userId } = req.params;
-      if (!userId) {
-        return res.status(400).json({ status: false, message: "USER_ID_REQUIRED" });
-      }
-
-      const user = await User.findById(userId);
-      if (!user) {
-        return res.status(404).json({ status: false, message: "USER_NOT_FOUND" });
-      }
-
-      const carts = await Cart.find({ userId });
-      if (!carts || carts.length === 0) {
-        return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
-      }
-
-      const cartData = await Promise.all(carts.map(async (cart) => {
-        const cartItems = await CartItem.find({ cartId: cart._id }).populate({
-          path:"productId", 
-          select:"name brandId description stocks location images",
-        populate:{
-          path:"brandId",
-          select:"title image",
-        }});
-
-        const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
-        if (cart.total_price !== updatedTotalPrice) {
-          cart.total_price = updatedTotalPrice;
-          await cart.save();
-        }
-
-        return {
-          id: cart._id,
-          total_price: cart.total_price,
-          shipping_address: cart.shipping_address,
-          status: cart.status,
-          cartItems: cartItems.map((item) => ({
-            id: item._id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            subtotal: item.subtotal,
-          })),
-        };
-      }));
-
-      return res.status(200).json({
-        status: true,
-        message: "CART_FOUND",
-        data: {
-          user: user.fullname,
-          userId: user._id,
-          count: cartData.length,
-          carts: cartData,
-        },
-      });
-    } catch (error) {
-      return res.status(error.code || 500).json({ status: false, message: error.message });
+async getCartByUserId(req, res) {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({ status: false, message: "USER_ID_REQUIRED" });
     }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: false, message: "USER_NOT_FOUND" });
+    }
+
+    const carts = await Cart.find({ userId });
+    if (!carts || carts.length === 0) {
+      return res.status(404).json({ status: false, message: "CART_NOT_FOUND" });
+    }
+
+    const cartData = await Promise.all(carts.map(async (cart) => {
+      const cartItems = await CartItem.find({ cartId: cart._id }).populate({
+        path: "productId",
+        select: "name price stocks"
+      });
+
+      const updatedTotalPrice = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
+      if (cart.total_price !== updatedTotalPrice) {
+        cart.total_price = updatedTotalPrice;
+        await cart.save();
+      }
+
+      return {
+        cartId: cart._id,
+        total_price: cart.total_price,
+        shipping_address: cart.shipping_address,
+        status: cart.status,
+        cart_items: cartItems.map(item => ({
+          product_name: item.productId?.name,
+          product_price: item.productId?.price,
+          product_stocks: item.productId?.stocks,
+          quantity: item.quantity,
+          subtotal: item.subtotal
+        }))
+      };
+    }));
+
+    return res.status(200).json({
+      status: true,
+      message: "CART_FOUND",
+      data: {
+        user: {
+          fullname: user.fullname,
+          email: user.email,
+        },
+        userId: user._id,
+        count: cartData.length,
+        carts: cartData,
+      },
+    });
+  } catch (error) {
+    return res.status(error.code || 500).json({ status: false, message: error.message });
   }
+}
 
   // ✏️ Update cart (alamat, total, status) berdasarkan ID
   async putCart(req, res) {

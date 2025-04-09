@@ -167,6 +167,7 @@ class CartItemController {
               fullname: user.fullname,
               email: user.email,
             },
+            cart_item_count: cartItem.length,
             cart_Items: cartItem.map((item) => ({
               product_name: item.productId.name,
               product_price: item.productId.price,
@@ -182,6 +183,41 @@ class CartItemController {
       return res
         .status(error.code || 500)
         .json({ status: false, message: error.message });
+    }
+  }
+
+  async getAllCartItems(req, res) {
+    try {
+      const cartItems = await CartItem.find().populate({
+        path: "productId",
+        select: "name price",
+        });
+      if (!cartItems) {
+        return res.status(404).json({
+          status: false,
+          message: "CART_ITEM_NOT_FOUND",
+        });
+      }
+      return res.status(200).json({
+        status: true,
+        message: "CART_ITEM_FOUND",
+        data: cartItems.map((item) => ({
+          itemId: item._id,
+          cartId: item.cartId,
+          product:{
+            productId: item.productId._id,
+            product_name: item.productId.name,
+            product_price: item.productId.price,
+            quantity: item.quantity,
+            subtotal: item.subtotal,
+          }
+        })),
+      });
+    } catch (error) {
+      return res
+        .status(error.code || 500)
+        .json({ status: false, message: error.message });
+      
     }
   }
 }
