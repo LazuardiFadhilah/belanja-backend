@@ -72,7 +72,7 @@ router.delete("/brand/:id", jwtAuth, brandController.deleteBrand);
 // =========================
 router.get("/cart/cart-item", jwtAuth, CartItemController.getAllCartItems);
 router.post("/cart/:CartId/cart-item", jwtAuth, CartItemController.createCartItem);
-router.get("/cart/:cartId/cart-item", jwtAuth, CartItemController.getCartItemByCartId);
+
 
 // =========================
 // CART ROUTES
@@ -83,5 +83,7 @@ router.get("/cart/user/:userId", jwtAuth, CartController.getCartByUserId);
 router.put("/cart/:id", jwtAuth, CartController.putCart);
 router.delete("/cart/:id", jwtAuth, CartController.deleteCart);
 router.get("/cart/:id", jwtAuth, CartController.getCartById); // Letakkan paling bawah
+router.put("/cart-item/:cartItemId", jwtAuth, CartItemController.putCartItem);
+router.delete("/cart-item/:cartItemId", jwtAuth, CartItemController.deleteCartItem);
 
 export default router;

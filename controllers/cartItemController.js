@@ -2,7 +2,6 @@ import CartItem from "../models/CartItem.js";
 import Cart from "../models/Cart.js";
 import Product from "../models/Products.js";
 import User from "../models/User.js";
-import emailExist from "../libraries/emailExist.js";
 
 class CartItemController {
   async createCartItem(req, res) {
@@ -113,79 +112,6 @@ class CartItemController {
     }
   }
 
-  async getCartItemByCartId(req, res) {
-    try {
-      if (!req.params.cartId) {
-        return res.status(400).json({
-          status: false,
-          message: "CART_ID_REQUIRED",
-        });
-      }
-
-      const cart = await Cart.findById(req.params.cartId);
-      if (!cart) {
-        return res.status(404).json({
-          status: false,
-          message: "CART_NOT_FOUND",
-        });
-      }
-
-      const user = await User.findById(cart.userId);
-      if (!user) {
-        return res.status(404).json({
-          status: false,
-          message: "USER_NOT_FOUND",
-        });
-      }
-
-      const cartItem = await CartItem.find({
-        cartId: req.params.cartId,
-      }).populate({
-        path: "productId",
-        select:"name price stocks",
-      });
-      if (!cartItem) {
-        return res.status(404).json({
-          status: false,
-          message: "CART_ITEM_NOT_FOUND",
-        });
-      }
-
-      const updatedTotalPrice = cartItem.reduce((acc, item) => acc + item.subtotal, 0);
-      cart.total_price = updatedTotalPrice;
-      await cart.save();
-      
-        return res.status(200).json({
-          status: true,
-          message: "CART_ITEM_FOUND",
-          data: {
-            cartId: cart._id,
-            total_price: cart.total_price,
-            shipping_address: cart.shipping_address,
-            status: cart.status,
-            user:{
-              fullname: user.fullname,
-              email: user.email,
-            },
-            cart_item_count: cartItem.length,
-            cart_Items: cartItem.map((item) => ({
-              product_name: item.productId.name,
-              product_price: item.productId.price,
-              product_stocks: item.productId.stocks,
-              quantity: item.quantity,
-              subtotal: item.subtotal,
-            })),
-          },
-        });
-
-     
-    } catch (error) {
-      return res
-        .status(error.code || 500)
-        .json({ status: false, message: error.message });
-    }
-  }
-
   async getAllCartItems(req, res) {
     try {
       const cartItems = await CartItem.find().populate({
@@ -212,6 +138,101 @@ class CartItemController {
             subtotal: item.subtotal,
           }
         })),
+      });
+    } catch (error) {
+      return res
+        .status(error.code || 500)
+        .json({ status: false, message: error.message });
+      
+    }
+  }
+
+  async putCartItem(req, res) {
+   try {
+    if(!req.params.cartItemId){
+      return res.status(400).json({
+        status: false,
+        message: "CART_ITEM_ID_REQUIRED",
+      });
+    }
+    const cartItem = await CartItem.findById(req.params.cartItemId);
+    if(!cartItem){
+      return res.status(404).json({
+        status: false,
+        message: "CART_ITEM_NOT_FOUND",
+      });}
+      const updateCartItem = await CartItem.findByIdAndUpdate(
+        req.params.cartItemId,
+        {
+          $set: {
+            quantity: req.body.quantity,
+            subtotal: req.body.quantity * cartItem.price,
+          },
+        },
+        { new: true }
+      ).populate({
+        path: "productId",
+        select: "name price",
+        });
+      if(!updateCartItem){
+        return res.status(404).json({
+          status: false,
+          message: "CART_ITEM_NOT_FOUND",
+        });
+      }
+      return res.status(200).json({
+        status: true,
+        message: "CART_ITEM_UPDATED",
+        data: {
+          cartId: cartItem.cartId,
+          cartItemId: updateCartItem._id,
+          productId: updateCartItem.productId,
+          quantity: updateCartItem.quantity,
+          price: updateCartItem.price,
+          subtotal: updateCartItem.subtotal,
+        },
+      });
+    } catch (error) {
+      return res
+        .status(error.code || 500)
+        .json({ status: false, message: error.message });
+      
+    }
+  }
+
+  async deleteCartItem(req, res) {
+    try {
+      if(!req.params.cartItemId){
+        return res.status(400).json({
+          status: false,
+          message: "CART_ITEM_ID_REQUIRED",
+        });
+      }
+      const cartItem = await CartItem.findById(req.params.cartItemId);
+      if(!cartItem){
+        return res.status(404).json({
+          status: false,
+          message: "CART_ITEM_NOT_FOUND",
+        });
+      }
+      const deleteCartItem = await CartItem.findByIdAndDelete(req.params.cartItemId);
+      if(!deleteCartItem){
+        return res.status(404).json({
+          status: false,
+          message: "CART_ITEM_NOT_FOUND",
+        });
+      }
+      return res.status(200).json({
+        status: true,
+        message: "CART_ITEM_DELETED",
+        data: {
+          cartId: cartItem.cartId,
+          cartItemId: deleteCartItem._id,
+          productId: deleteCartItem.productId,
+          quantity: deleteCartItem.quantity,
+          price: deleteCartItem.price,
+          subtotal: deleteCartItem.subtotal,
+        },
       });
     } catch (error) {
       return res
