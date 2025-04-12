@@ -3,6 +3,7 @@ import Cart from "../models/Cart.js";
 import CartItem from "../models/CartItem.js";
 import Transaction from "../models/Transactions.js";
 import TransactionItem from "../models/TransactionItems.js";
+import ShippingAddress from "../models/ShippingAddress.js";
 import snap from "./midtrans.js";
 import Products from "../models/Products.js";
 
@@ -126,6 +127,8 @@ class TransactionController {
                 }
             }
           ));
+
+          const shippingAddress = await ShippingAddress.findById(transaction.shippingId);
       
           // 📤 11. Kirim response sukses
           return res.status(201).json({
@@ -136,6 +139,7 @@ class TransactionController {
               subtotal: updatedTotalPrice,
               user:{
                 name: user.fullname,
+                shippingAddress: shippingAddress ? shippingAddress.address : null,
               },
               transaction_items:enrichedTransactionItems,
               paymentUrl: midtransRes.redirect_url,
@@ -144,6 +148,87 @@ class TransactionController {
       
         } catch (error) {
           // 🧨 12. Tangani error
+          return res
+            .status(error.code || 500)
+            .json({ status: false, message: error.message });
+        }
+      }
+
+      async getTransaction(req, res) {
+        try {
+          // ✅ 1. Ambil ID transaksi dari params
+          const transactionId = req.params.id;
+          if (!transactionId) {
+            return res.status(400).json({
+              status: false,
+              message: "TRANSACTION_ID_REQUIRED",
+            });
+          }
+      
+          // ✅ 2. Cari transaksi berdasarkan ID
+          const transaction = await Transaction.findById(transactionId);
+          if (!transaction) {
+            return res.status(404).json({
+              status: false,
+              message: "TRANSACTION_NOT_FOUND",
+            });
+          }
+      
+          // ✅ 3. Ambil alamat pengiriman jika ada
+          const shippingAddress = transaction.shippingId
+            ? await ShippingAddress.findById(transaction.shippingId)
+            : null;
+      
+          // ✅ 4. Ambil data user dari transaksi
+          const user = await User.findById(transaction.userId);
+          if (!user) {
+            return res.status(404).json({
+              status: false,
+              message: "USER_NOT_FOUND",
+            });
+          }
+      
+          // ✅ 5. Ambil semua item dari transaksi ini
+          const transactionItems = await TransactionItem.find({
+            transactionId: transaction._id,
+          });
+          if (!transactionItems || transactionItems.length === 0) {
+            return res.status(404).json({
+              status: false,
+              message: "TRANSACTION_ITEM_NOT_FOUND",
+            });
+          }
+      
+          // ✅ 6. Enrich transaction items dengan nama produk
+          const enrichedTransactionItems = await Promise.all(
+            transactionItems.map(async (item) => {
+              const product = await Products.findById(item.productId);
+              return {
+                product: product?.name || null,
+                quantity: item.quantity,
+                price: item.price,
+                total_price: item.price * item.quantity,
+              };
+            })
+          );
+      
+          // ✅ 7. Kirim response sukses
+          return res.status(200).json({
+            status: true,
+            message: "TRANSACTION_FOUND",
+            data: {
+              transactionId: transaction._id,
+              subtotal: transaction.totalPrice,
+              user: {
+                name: user.fullname,
+                shipping_address: shippingAddress ? shippingAddress.address : null,
+              },
+              transaction_items: enrichedTransactionItems,
+              paymentUrl: transaction.paymentUrl,
+            },
+          });
+        } catch (error) {
+          // 🧨 8. Tangani error
           return res
             .status(error.code || 500)
             .json({ status: false, message: error.message });

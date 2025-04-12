@@ -1,9 +1,13 @@
 // Import dependencies dan controller
 import express from "express";
 import AuthController from "../controllers/AuthController.js";
-import productController, { uploadProduct } from "../controllers/productController.js";
+import productController, {
+  uploadProduct,
+} from "../controllers/productController.js";
 import categoryController from "../controllers/categoryController.js";
-import brandController, { uploadBrand } from "../controllers/brandController.js";
+import brandController, {
+  uploadBrand,
+} from "../controllers/brandController.js";
 import CartController from "../controllers/cartController.js";
 import transactionController from "../controllers/transactionController.js";
 import CartItemController from "../controllers/cartItemController.js";
@@ -72,8 +76,11 @@ router.delete("/brand/:id", jwtAuth, brandController.deleteBrand);
 // CART ITEMS ROUTES (Diletakkan di atas route dengan param :id agar tidak bentrok)
 // =========================
 router.get("/cart/cart-item", jwtAuth, CartItemController.getAllCartItems);
-router.post("/cart/:CartId/cart-item", jwtAuth, CartItemController.createCartItem);
-
+router.post(
+  "/cart/:CartId/cart-item",
+  jwtAuth,
+  CartItemController.createCartItem
+);
 
 // =========================
 // CART ROUTES
@@ -85,8 +92,13 @@ router.put("/cart/:id", jwtAuth, CartController.putCart);
 router.delete("/cart/:id", jwtAuth, CartController.deleteCart);
 router.get("/cart/:id", jwtAuth, CartController.getCartById); // Letakkan paling bawah
 router.put("/cart-item/:cartItemId", jwtAuth, CartItemController.putCartItem);
-router.delete("/cart-item/:cartItemId", jwtAuth, CartItemController.deleteCartItem);
+router.delete(
+  "/cart-item/:cartItemId",
+  jwtAuth,
+  CartItemController.deleteCartItem
+);
 
 router.post("/transaction", jwtAuth, transactionController.postTransaction);
+router.get("/transaction/:id?", jwtAuth, transactionController.getTransaction);
 
 export default router;
