@@ -5,6 +5,7 @@ import productController, { uploadProduct } from "../controllers/productControll
 import categoryController from "../controllers/categoryController.js";
 import brandController, { uploadBrand } from "../controllers/brandController.js";
 import CartController from "../controllers/cartController.js";
+import transactionController from "../controllers/transactionController.js";
 import CartItemController from "../controllers/cartItemController.js";
 import jwtAuth from "../middleware/jwtAuth.js";
 
@@ -85,5 +86,7 @@ router.delete("/cart/:id", jwtAuth, CartController.deleteCart);
 router.get("/cart/:id", jwtAuth, CartController.getCartById); // Letakkan paling bawah
 router.put("/cart-item/:cartItemId", jwtAuth, CartItemController.putCartItem);
 router.delete("/cart-item/:cartItemId", jwtAuth, CartItemController.deleteCartItem);
+
+router.post("/transaction", jwtAuth, transactionController.postTransaction);
 
 export default router;

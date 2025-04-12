@@ -72,11 +72,11 @@ class ProductController {
             price: product.price,
             location: product.location,
             stocks: product.stocks,
-            brand: {
+            brand: product.brandId ? {
               id: product.brandId._id,
               title: product.brandId.title,
               image: product.brandId.image,
-            },
+            } : null,
             images: product.images,
         })),  
       });

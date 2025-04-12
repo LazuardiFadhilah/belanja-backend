@@ -85,13 +85,6 @@ class CartItemController {
           price: product.price,
           subtotal: req.body.quantity * product.price || product.price,
         });
-
-        if (!cartUpdate) {
-          return res.status(404).json({
-            status: false,
-            message: "CART_NOT_FOUND",
-          });
-        }
         res.status(201).json({
           status: true,
           message: "CART_ITEM_CREATED",
