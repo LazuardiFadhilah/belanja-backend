@@ -12,6 +12,7 @@ import CartController from "../controllers/cartController.js";
 import transactionController from "../controllers/transactionController.js";
 import CartItemController from "../controllers/cartItemController.js";
 import jwtAuth from "../middleware/jwtAuth.js";
+import ShippingAdressController from "../controllers/ShippingAdressController.js";
 
 const router = express.Router();
 
@@ -106,4 +107,12 @@ router.patch(
   jwtAuth,
   transactionController.updateTransaction
 );
+
+// =========================
+// SHIPPING ROUTES
+// =========================
+router.post("/shipping-address", jwtAuth, ShippingAdressController.postShippingAddress);
+router.get("/shipping-address", jwtAuth, ShippingAdressController.getShippingAddress);
+router.put("/shipping-address/:id", jwtAuth, ShippingAdressController.putShippingAddress);
+router.delete("/shipping-address/:id", jwtAuth, ShippingAdressController.deleteShippingAddress);
 export default router;
