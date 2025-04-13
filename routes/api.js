@@ -99,6 +99,11 @@ router.delete(
 );
 
 router.post("/transaction", jwtAuth, transactionController.postTransaction);
+router.get("/transactions", jwtAuth, transactionController.getUserTransaction);
 router.get("/transaction/:id?", jwtAuth, transactionController.getTransaction);
-
+router.patch(
+  "/transaction/:id/status",
+  jwtAuth,
+  transactionController.updateTransaction
+);
 export default router;
