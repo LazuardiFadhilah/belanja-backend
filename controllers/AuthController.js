@@ -1,6 +1,6 @@
 import User from "../models/User.js"; // Model User dari database
 import emailExist from "../libraries/emailExist.js"; // Fungsi untuk mengecek apakah email sudah terdaftar
-import bcrypt from "bcrypt"; // Library untuk hashing password
+import bcrypt from "bcryptjs"; // Library untuk hashing password
 import jwt from "jsonwebtoken"; // Library untuk JWT (JSON Web Token)
 import dotenv from "dotenv"; // Library untuk membaca file .env
 import mongoose from "mongoose"; // Library untuk mengakses database MongoDB
